@@ -1,0 +1,279 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/invoice",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        176
+      ],
+      "id": "eea24c16-86aa-47cb-9078-dba021f9d818",
+      "name": "Webhook",
+      "webhookId": "2c88cc6d-5d69-4933-a571-caa5a9949519"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"success\",\n  \"message\": \"Receipt data sent to backend\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        816,
+        112
+      ],
+      "id": "2ee25863-31ea-47a4-ab63-c14a09dadf3c",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "508c48b7-0715-47a3-8cbe-22084a9b9246",
+              "leftValue": "={{ $binary && Object.keys($binary).length > 0 }}\n",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "12331361-aed1-463b-82a0-1d0324f51006",
+              "leftValue": "={{ $json.body.imageUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -320,
+        176
+      ],
+      "id": "a7e1e4bd-9b01-489d-b27f-f1d50b2fc3e5",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ocr.space/parse/image",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            },
+            {
+              "name": "language",
+              "value": "eng"
+            },
+            {
+              "name": "isTable",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5eb2e300-b179-4098-a9e5-6e82b7034bf8",
+      "name": "OCR Request File",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "dD7iWvnkBZILN1aE",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ocr.space/parse/image",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.body.imageUrl }}"
+            },
+            {
+              "name": "language",
+              "value": "eng"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        192
+      ],
+      "id": "f175ada9-55ef-42ef-a45a-203d5c1daa26",
+      "name": "OCR Request Url",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "dD7iWvnkBZILN1aE",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/invoices",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"vendor\": \"{{ $json.invoice.vendor }}\",\n  \"date\": \"{{ $json.invoice.date }}\",\n  \"total\": \"{{ $json.invoice.total }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        592,
+        112
+      ],
+      "id": "7b75ea6e-0651-40ca-a3fd-8a2806352fb6",
+      "name": "Express Backend Request",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = $json.ParsedResults[0].ParsedText\n\nconst vendorMatch = text.match(/^(.+?)\\s*--/);\n\nconst dateRegex = /\\b(\\d{1,2}[\\/.-]\\d{1,2}[\\/.-]\\d{2,4}|\\d{4}[\\/.-]\\d{1,2}[\\/.-]\\d{1,2})\\b/;\n\nconst dateMatch = text.match(dateRegex);\n\nconst totalMatch = text.match(/TOTAL:\\s*\\$?\\s*([\\d.,]+)/i);\n\nconst invoice = {\n  vendor: vendorMatch?.[1]?.trim() || null,\n  date: dateMatch?.[1]?.trim() || \"\",\n  total: parseFloat(totalMatch?.[1].replace(/,/g, \"\")) || 0\n}\n\nreturn { json: { invoice } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        96
+      ],
+      "id": "987dbec7-22a2-45a9-882c-b7861efbb75e",
+      "name": "Parse OCR Text"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "OCR Request File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "OCR Request Url",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR Request File": {
+      "main": [
+        [
+          {
+            "node": "Parse OCR Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR Request Url": {
+      "main": [
+        [
+          {
+            "node": "Parse OCR Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Express Backend Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse OCR Text": {
+      "main": [
+        [
+          {
+            "node": "Express Backend Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "df385acb-ba72-4b64-8bb8-ef6192589bfe",
+  "meta": {
+    "instanceId": "14969c9668bea30b9173ff0243a616f8f275b0df8314935c076bef1bdf3cc882"
+  },
+  "id": "9JhGe2f9hPf8yfmy",
+  "tags": []
+}
