@@ -25,11 +25,10 @@ Frontend React project inside of /client folder. Backend Express REST API projec
 2. Install dependencies:
     - Run "npm install" inside of the /client folder
     - Run "npm install" inside of the /server folder
-3. Configure environment variables
-4. Start services
+3. Start services
     - Run "npm run build" then "npm run preview" inside of the /client folder or alternatively "npm run dev" for development environment
     - Run "npm start" inside of /server folder
-5. Optionally: environment variables for ports can be changed.
+4. Optionally: environment variables for ports can be changed.
     - Inside of client folder .env, "VITE_PORT=????" for React, "VITE_EXPRESS_PORT=????" for Express Server otherwise the default port for client is 5173.
     - Inside of server folder .env, "EXPRESS_PORT=????" otherwise the default port for server is 3000.
     - NOTE: If server EXPRESS_PORT is changed, then client EXPRESS_PORT must be changed.
@@ -73,6 +72,14 @@ curl -X POST http://localhost:3000/api/invoices \
 
 GET /api/csv-export
 curl http://localhost:3000/api/csv-export --output invoices.csv
+
+N8N Webhook Call
+POST /webhook-test/invoice
+curl --location 'http://localhost:5678/webhook-test/invoice' \
+  --header 'Content-Type: application/json' \
+  --data '{
+      "imageUrl": "https://example.com/receipt.jpg"
+  }'
 
 # Assumptions Made
 1. For vendor normalization, I only considered 4 vendors that are common in Canada inside the top of the compareVendorName.js file.
