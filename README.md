@@ -112,6 +112,7 @@ vendorList = {
 
 4. For speed and simplicity, I used inline styles instead of extracting CSS for the frontend React application.
 
+5. For the backend, I chose to implement it in JavaScript rather than TypeScript to keep the setup lightweight and reduce configuration. I also chose to use CommonJS because it offers compatability accross many different Node environments without configuration. For a production system, especially one using TypeScript, I would use the ES Modules for a more modern standard.
 
 # Improvements
 - Security: Use OAuth2 (ex. Microsoft), issue bearer tokens for authorization of Express.js endpoints
@@ -120,3 +121,4 @@ vendorList = {
 - Create unit and integration tests
 - Performance Considerations: caching common calls such as get all invoices for frontend view.
 - Frontend Feedback to show loading or upload complete etc.
+- Containerize frontend and backend
